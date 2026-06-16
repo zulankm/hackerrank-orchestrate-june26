@@ -35,20 +35,20 @@ Read [`problem_statement.md`](./problem_statement.md) for the full task spec, in
 │   └── evaluation/
 │       └── main.py                   # Suggested evaluation entry point
 └── dataset/
-    ├── sample.csv                    # Inputs + expected outputs for development
-    ├── test.csv                      # Inputs only; run your system on these rows
+    ├── sample_claims.csv             # Inputs + expected outputs for development
+    ├── claims.csv                    # Inputs only; run your system on these rows
     ├── user_history.csv              # Historical claim counts and risk context
     ├── evidence_requirements.csv     # Minimum image evidence requirements
     └── images/
-        ├── sample/                   # Images referenced by sample.csv
-        └── test/                     # Images referenced by test.csv
+        ├── sample/                   # Images referenced by sample_claims.csv
+        └── test/                     # Images referenced by claims.csv
 ```
 
 ---
 
 ## What you need to build
 
-A system that, for each row in `dataset/test.csv`, produces one row in `output.csv`.
+A system that, for each row in `dataset/claims.csv`, produces one row in `output.csv`.
 
 Input fields:
 
@@ -114,7 +114,7 @@ You are free to use any language or runtime. Python, JavaScript, and TypeScript 
 
 The evaluation report should include:
 
-- metrics on `dataset/sample.csv`
+- metrics on `dataset/sample_claims.csv`
 - at least two strategies, prompts, or model configurations compared
 - the final strategy used for `output.csv`
 - operational analysis covering model calls, token usage, image usage, approximate cost, runtime, and TPM/RPM considerations
@@ -141,12 +141,12 @@ Never paste secrets into the chat. If secrets are needed, use environment variab
 Submit the following files as instructed by HackerRank:
 
 1. **Code zip**: zip your runnable solution, README, prompts/configs, and evaluation folder. Exclude virtualenvs, `node_modules`, build artifacts, and unnecessary generated files.
-2. **Predictions CSV**: your final `output.csv` for all rows in `dataset/test.csv`.
+2. **Predictions CSV**: your final `output.csv` for all rows in `dataset/claims.csv`.
 3. **Chat transcript**: the `log.txt` from the path in [Chat transcript logging](#chat-transcript-logging).
 
 Before submitting, confirm:
 
-- `output.csv` has one row per row in `dataset/test.csv`.
+- `output.csv` has one row per row in `dataset/claims.csv`.
 - `output.csv` has the exact required columns in the exact required order.
 - Your evaluation files are included in `code.zip`.
 

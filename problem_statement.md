@@ -31,10 +31,10 @@ For each claim, your system should:
 
 You will receive:
 
-1. `dataset/sample.csv`  
+1. `dataset/sample_claims.csv`  
    Labeled examples with inputs and expected outputs. Use this to understand the expected behavior and evaluate your system.
 
-2. `dataset/test.csv`  
+2. `dataset/claims.csv`  
    Input-only rows. Run your system on this file and produce `output.csv`.
 
 3. `dataset/user_history.csv`  
@@ -56,7 +56,7 @@ The image ID is the filename without extension, such as `img_1`.
 
 ## Input schema
 
-Each row in `test.csv` represents one damage claim.
+Each row in `claims.csv` represents one damage claim.
 
 Input fields:
 
@@ -91,7 +91,7 @@ Use history to add risk context through `risk_flags` and justifications.
 
 ## Required output
 
-For each row in `test.csv`, generate one row in `output.csv`.
+For each row in `claims.csv`, generate one row in `output.csv`.
 
 Required columns, in order:
 
@@ -145,7 +145,7 @@ Use `issue_type=none` when the relevant part is visible and no issue is present.
 
 Your `code.zip` must include an `evaluation/` folder.
 
-Use `dataset/sample.csv` to evaluate your system before producing final predictions for `dataset/test.csv`.
+Use `dataset/sample_claims.csv` to evaluate your system before producing final predictions for `dataset/claims.csv`.
 
 ## Operational analysis
 
@@ -169,7 +169,7 @@ Submit:
 | File | Description |
 |---|---|
 | `code.zip` | Full runnable solution, prompts/configs, README, and `evaluation/` folder. |
-| `output.csv` | Predictions for all rows in `dataset/test.csv`. |
+| `output.csv` | Predictions for all rows in `dataset/claims.csv`. |
 | `chat_transcript` | Conversation transcript showing how you developed or used the system. |
 
 These are the must-haves. Beyond that, participants are encouraged to improve retrieval, prompting, evaluation, confidence handling, batching, caching, or review logic.
