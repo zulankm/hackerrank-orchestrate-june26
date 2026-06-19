@@ -373,5 +373,155 @@
         "estimated_cost_usd": 0.0
       }
     }
+  },
+  {
+    "timestamp": "2026-06-19 20:52:20",
+    "models": {
+      "claude-3-5-sonnet-20241022": {
+        "overall_accuracy": 0.95,
+        "accuracy_claim_status": 0.95,
+        "accuracy_object_part": 1.0,
+        "accuracy_issue_type": 1.0,
+        "accuracy_evidence_standard_met": 0.95,
+        "accuracy_severity": 0.95,
+        "runtime_seconds": 2.126901149749756,
+        "estimated_cost_usd": 0.238869
+      },
+      "claude-3-5-haiku-20241022": {
+        "overall_accuracy": 0.8,
+        "accuracy_claim_status": 0.8,
+        "accuracy_object_part": 1.0,
+        "accuracy_issue_type": 1.0,
+        "accuracy_evidence_standard_met": 0.8,
+        "accuracy_severity": 0.8,
+        "runtime_seconds": 0.5446059703826904,
+        "estimated_cost_usd": 0.0634064
+      },
+      "gemini-1.5-pro": {
+        "overall_accuracy": 0.95,
+        "accuracy_claim_status": 0.95,
+        "accuracy_object_part": 1.0,
+        "accuracy_issue_type": 1.0,
+        "accuracy_evidence_standard_met": 0.95,
+        "accuracy_severity": 0.95,
+        "runtime_seconds": 0.5455670356750488,
+        "estimated_cost_usd": 0.04882
+      },
+      "gemini-1.5-flash": {
+        "overall_accuracy": 0.7,
+        "accuracy_claim_status": 0.7,
+        "accuracy_object_part": 1.0,
+        "accuracy_issue_type": 1.0,
+        "accuracy_evidence_standard_met": 0.7,
+        "accuracy_severity": 0.7,
+        "runtime_seconds": 0.5481991767883301,
+        "estimated_cost_usd": 0.0029081999999999997
+      },
+      "qwen2-vl:7b": {
+        "overall_accuracy": 0.95,
+        "accuracy_claim_status": 0.95,
+        "accuracy_object_part": 1.0,
+        "accuracy_issue_type": 1.0,
+        "accuracy_evidence_standard_met": 0.95,
+        "accuracy_severity": 0.95,
+        "runtime_seconds": 0.5504739284515381,
+        "estimated_cost_usd": 0.0
+      },
+      "llama3.2-vision:11b": {
+        "overall_accuracy": 0.95,
+        "accuracy_claim_status": 0.95,
+        "accuracy_object_part": 1.0,
+        "accuracy_issue_type": 1.0,
+        "accuracy_evidence_standard_met": 0.95,
+        "accuracy_severity": 0.95,
+        "runtime_seconds": 0.5505931377410889,
+        "estimated_cost_usd": 0.0
+      },
+      "internvl2.5:8b": {
+        "overall_accuracy": 0.95,
+        "accuracy_claim_status": 0.95,
+        "accuracy_object_part": 1.0,
+        "accuracy_issue_type": 1.0,
+        "accuracy_evidence_standard_met": 0.95,
+        "accuracy_severity": 0.95,
+        "runtime_seconds": 0.5494749546051025,
+        "estimated_cost_usd": 0.0
+      }
+    }
+  },
+  {
+    "timestamp": "2026-06-19 20:53:15",
+    "models": {
+      "claude-3-5-sonnet-20241022": {
+        "overall_accuracy": 0.95,
+        "accuracy_claim_status": 0.95,
+        "accuracy_object_part": 1.0,
+        "accuracy_issue_type": 1.0,
+        "accuracy_evidence_standard_met": 0.95,
+        "accuracy_severity": 0.95,
+        "runtime_seconds": 0.7798638343811035,
+        "estimated_cost_usd": 0.238869
+      },
+      "claude-3-5-haiku-20241022": {
+        "overall_accuracy": 0.8,
+        "accuracy_claim_status": 0.8,
+        "accuracy_object_part": 1.0,
+        "accuracy_issue_type": 1.0,
+        "accuracy_evidence_standard_met": 0.8,
+        "accuracy_severity": 0.8,
+        "runtime_seconds": 0.5460107326507568,
+        "estimated_cost_usd": 0.0634064
+      },
+      "gemini-1.5-pro": {
+        "overall_accuracy": 0.95,
+        "accuracy_claim_status": 0.95,
+        "accuracy_object_part": 1.0,
+        "accuracy_issue_type": 1.0,
+        "accuracy_evidence_standard_met": 0.95,
+        "accuracy_severity": 0.95,
+        "runtime_seconds": 0.5478572845458984,
+        "estimated_cost_usd": 0.04882
+      },
+      "gemini-1.5-flash": {
+        "overall_accuracy": 0.7,
+        "accuracy_claim_status": 0.7,
+        "accuracy_object_part": 1.0,
+        "accuracy_issue_type": 1.0,
+        "accuracy_evidence_standard_met": 0.7,
+        "accuracy_severity": 0.7,
+        "runtime_seconds": 0.542640209197998,
+        "estimated_cost_usd": 0.0029081999999999997
+      },
+      "qwen2-vl:7b": {
+        "overall_accuracy": 0.95,
+        "accuracy_claim_status": 0.95,
+        "accuracy_object_part": 1.0,
+        "accuracy_issue_type": 1.0,
+        "accuracy_evidence_standard_met": 0.95,
+        "accuracy_severity": 0.95,
+        "runtime_seconds": 0.5419421195983887,
+        "estimated_cost_usd": 0.0
+      },
+      "llama3.2-vision:11b": {
+        "overall_accuracy": 0.95,
+        "accuracy_claim_status": 0.95,
+        "accuracy_object_part": 1.0,
+        "accuracy_issue_type": 1.0,
+        "accuracy_evidence_standard_met": 0.95,
+        "accuracy_severity": 0.95,
+        "runtime_seconds": 0.543133020401001,
+        "estimated_cost_usd": 0.0
+      },
+      "internvl2.5:8b": {
+        "overall_accuracy": 0.95,
+        "accuracy_claim_status": 0.95,
+        "accuracy_object_part": 1.0,
+        "accuracy_issue_type": 1.0,
+        "accuracy_evidence_standard_met": 0.95,
+        "accuracy_severity": 0.95,
+        "runtime_seconds": 0.54836106300354,
+        "estimated_cost_usd": 0.0
+      }
+    }
   }
 ]

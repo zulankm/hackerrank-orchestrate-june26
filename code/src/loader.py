@@ -5,7 +5,7 @@ import re
 import pandas as pd
 from pathlib import Path
 from PIL import Image
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, cast
 
 def load_user_history(dataset_dir: Path) -> Dict[str, Dict[str, Any]]:
     """
@@ -254,19 +254,20 @@ def diagnose_image_quality(full_path: Path) -> List[str]:
         import numpy as np
         img = cv2.imread(str(full_path), cv2.IMREAD_GRAYSCALE)
         if img is not None:
+            img_arr = cast(np.ndarray, img)
             # Flat-surface guard: highly uniform images are not blurry — they are plain surfaces.
             # Pixel stddev < 15 indicates a featureless/uniform surface (e.g. blank cardboard).
-            pixel_stddev = float(np.std(img))
+            pixel_stddev = float(np.std(img_arr))
             is_flat_surface = pixel_stddev < 15.0
 
             # Blur check: Laplacian Variance — only meaningful on textured surfaces
             if not is_flat_surface:
-                lap_var = cv2.Laplacian(img, cv2.CV_64F).var()
+                lap_var = cv2.Laplacian(img_arr, cv2.CV_64F).var()
                 if lap_var < 70.0:
                     flags.append("blurry_image")
 
             # Brightness check: Grayscale mean
-            mean_brightness = img.mean()
+            mean_brightness = img_arr.mean()
             if mean_brightness < 35.0:
                 flags.append("low_light_or_glare")
             return flags

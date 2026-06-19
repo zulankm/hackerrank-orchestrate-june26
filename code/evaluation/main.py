@@ -128,7 +128,7 @@ def run_evaluation_for_model(
         
         # 3. Formulate prompts
         system_prompt = build_system_prompt()
-        user_prompt = build_user_prompt(row, history, reqs)
+        user_prompt = build_user_prompt(row.to_dict(), history, reqs)
         
         # Estimate input tokens
         # Standard assumption: ~1.5 tokens per word for prompts/transcripts
@@ -147,7 +147,7 @@ def run_evaluation_for_model(
         
         # 4. Run prediction
         pred = evaluate_claim(
-            row=row,
+            row=row.to_dict(),
             base64_images=base64_images,
             valid_image_flag=valid_image_flag,
             history=history,

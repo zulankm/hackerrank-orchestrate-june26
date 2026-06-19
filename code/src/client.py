@@ -5,7 +5,7 @@ import hashlib
 import re
 import base64
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, cast
 from threading import Lock
 from src.config import (
     MODEL_SONNET,
@@ -114,6 +114,9 @@ def call_anthropic_api(
         }
     ]
     
+    from anthropic.types import ToolUnionParam
+    typed_tools = cast(List[ToolUnionParam], tools)
+
     content = []
     # Add base64 images
     for img in base64_images:
@@ -140,7 +143,7 @@ def call_anthropic_api(
                 max_tokens=2048,
                 system=system_prompt,
                 messages=[{"role": "user", "content": content}],
-                tools=tools,
+                tools=typed_tools,
                 tool_choice={"type": "tool", "name": "verify_claim"},
                 temperature=0.0
             )
@@ -249,6 +252,7 @@ def call_openai_compatible_api(
     Override with the OLLAMA_BASE_URL environment variable.
     """
     from openai import OpenAI
+    from openai.types.chat import ChatCompletionMessageParam, ChatCompletionContentPartParam
 
     client = OpenAI(
         base_url=base_url,
@@ -257,7 +261,7 @@ def call_openai_compatible_api(
 
     # Build the content list: images first, then the text prompt.
     # OpenAI vision format uses {type: image_url, image_url: {url: "data:<mime>;base64,<b64>"}}
-    content: List[Dict[str, Any]] = []
+    content: List[ChatCompletionContentPartParam] = []
     for img in base64_images:
         data_url = f"data:{img['mime_type']};base64,{img['base64']}"
         content.append({
@@ -278,7 +282,7 @@ def call_openai_compatible_api(
     )
     content.append({"type": "text", "text": user_prompt + schema_instruction})
 
-    messages = [
+    messages: List[ChatCompletionMessageParam] = [
         {"role": "system", "content": system_prompt},
         {"role": "user",   "content": content},
     ]
@@ -514,7 +518,7 @@ def generate_mock_prediction(
             part_scores[part] = score
             
     if part_scores:
-        object_part = max(part_scores, key=part_scores.get)
+        object_part = max(part_scores, key=lambda k: part_scores[k])
     else:
         # Fallback to simple matching if no positive score
         object_part = "unknown"
