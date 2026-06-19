@@ -144,3 +144,184 @@ Run the evaluation harness to verify system integrity and check performance metr
 python3 code/evaluation/main.py
 ```
 This updates `code/evaluation/evaluation_report.md` and appends a run record to `code/evaluation/evaluation_history.json`.
+
+---
+
+## 6. Running Real Evaluations — Closed-Source Models (Anthropic & Google)
+
+The pipeline calls the Anthropic Messages API and Google Generative AI API directly. No local GPU is required — the heavy compute runs on the provider's cloud. You are billed per token.
+
+### 6.1 Getting API Keys
+
+#### Anthropic (Claude)
+1. Create an account at [console.anthropic.com](https://console.anthropic.com).
+2. Navigate to **API Keys** → click **Create Key**.
+3. Copy the key (starts with `sk-ant-...`).
+4. Billing: add a credit card under **Billing** → **Add Payment Method**. A $5 prepaid credit is enough to run the full test set multiple times with Sonnet.
+
+#### Google (Gemini)
+1. Go to [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey).
+2. Click **Create API Key** → select a Google Cloud project (or create one).
+3. Copy the key (starts with `AIza...`).
+4. Gemini 1.5 Pro/Flash have a free tier (60 requests/minute) — you can run the full evaluation at zero cost with Flash.
+
+### 6.2 Configuring Keys
+
+Create a `.env` file in the repo root:
+
+```bash
+# hackerrank-orchestrate-june26/.env
+ANTHROPIC_API_KEY=sk-ant-your-key-here
+GEMINI_API_KEY=AIza-your-key-here
+```
+
+Or export them in your shell session:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-your-key-here
+export GEMINI_API_KEY=AIza-your-key-here
+```
+
+### 6.3 Running the Evaluation
+
+```bash
+# Run full evaluation across all configured closed-source models
+cd hackerrank-orchestrate-june26/code
+python3 evaluation/main.py
+```
+
+The harness automatically detects which keys are set:
+- `ANTHROPIC_API_KEY` present → Claude Sonnet and Haiku run via real API calls.
+- `GEMINI_API_KEY` present → Gemini 1.5 Pro and Flash run via real API calls.
+- Key absent for a model → that model silently falls back to deterministic mock mode.
+
+You can also run the main pipeline on a single model:
+
+```bash
+python3 code/main.py \
+  --input dataset/claims.csv \
+  --output output.csv \
+  --model claude-3-5-sonnet-20241022
+```
+
+### 6.4 Expected Cost for a Full Real Evaluation (44 claims)
+
+| Model | Tokens per claim (approx.) | Cost per claim | Cost for 44 claims |
+|---|---|---|---|
+| `claude-3-5-sonnet-20241022` | ~2,400 in / ~300 out | ~$0.012 | **~$0.53** |
+| `claude-3-5-haiku-20241022` | ~2,400 in / ~300 out | ~$0.003 | **~$0.14** |
+| `gemini-1.5-pro` | ~2,400 in / ~300 out | ~$0.002 | **~$0.11** |
+| `gemini-1.5-flash` | ~2,400 in / ~300 out | ~$0.0001 | **~$0.006** |
+
+> **Tip**: Run Flash first (~$0.006 total) to sanity-check your key setup and dataset paths, then run Sonnet for the authoritative benchmark.
+
+### 6.5 Verifying a Real API Call Worked
+
+A real API call (vs mock) is identifiable in two ways:
+1. It takes **2–8 seconds per claim** instead of ~0.01s.
+2. The console does **not** print `Falling back to mock prediction` for that model.
+
+---
+
+## 7. Running Real Evaluations — Open-Source VLMs (Qwen2-VL, Llama Vision, InternVL)
+
+Open-source models run entirely on your own hardware via [Ollama](https://ollama.com), a local inference server that exposes an OpenAI-compatible API. There is **zero API cost** — you only pay for your hardware or cloud instance.
+
+### 7.1 Hardware Requirements
+
+| Model | RAM / VRAM Required | Recommended Hardware |
+|---|---|---|
+| `qwen2-vl:7b` (Q4 quantized) | **~5.5 GB** | M1/M2/M3 Mac 16 GB, RTX 3080 10 GB, any A10G |
+| `llama3.2-vision:11b` (Q4 quantized) | **~8.5 GB** | M1/M2/M3 Mac 16 GB, RTX 3090, A10G |
+| `internvl2.5:8b` (Q4 quantized) | **~6.5 GB** | M1/M2/M3 Mac 16 GB, RTX 3080, any A10G |
+| All 3 together (sequential) | **~9 GB peak** | 16 GB RAM Mac or 16 GB VRAM GPU |
+
+> **Note for Apple Silicon users**: Ollama uses the Metal GPU backend automatically. Unified memory is shared between CPU and GPU — a 16 GB M1/M2/M3 Mac can run all three models sequentially with no issue. An 8 GB Mac can run `qwen2-vl:7b` only.
+
+> **Note for Linux/NVIDIA users**: CUDA is used automatically if a GPU with sufficient VRAM is detected. CPU-only inference is possible but slow (~30–60s per claim).
+
+### 7.2 Installing Ollama
+
+**macOS:**
+```bash
+brew install ollama
+```
+
+**Linux:**
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+**Windows:**
+Download the installer from [ollama.com/download](https://ollama.com/download/windows).
+
+### 7.3 Pulling the Models
+
+Each model is downloaded once and cached locally. Run these once:
+
+```bash
+# Alibaba Qwen2-VL 7B — best visual precision & OCR (~4.7 GB download)
+ollama pull qwen2-vl:7b
+
+# Meta Llama 3.2 Vision 11B — best multi-lingual reasoning (~8.0 GB download)
+ollama pull llama3.2-vision:11b
+
+# OpenGVLab InternVL 2.5 8B — best multi-image context (~5.6 GB download)
+ollama pull internvl2.5:8b
+```
+
+### 7.4 Starting the Local Inference Server
+
+```bash
+ollama serve
+```
+
+This starts the server at `http://localhost:11434` in the background. Keep this terminal open (or run it as a background process). The pipeline connects to it automatically via the OpenAI-compatible `/v1/chat/completions` endpoint.
+
+### 7.5 Running the Evaluation
+
+Once `ollama serve` is running and models are pulled, run the evaluation exactly as normal — no flags needed:
+
+```bash
+cd hackerrank-orchestrate-june26/code
+python3 evaluation/main.py
+```
+
+For OSS models, the pipeline will:
+1. Detect `model_name in OPENSOURCE_MODELS`
+2. Connect to `http://localhost:11434/v1`
+3. Send claim images as base64 data-URLs in the OpenAI vision message format
+4. Parse the JSON response and run it through the same validator/repairer
+
+You will see per-claim confirmation in the console:
+```
+[OSS VLM] qwen2-vl:7b responded successfully for user_001.
+[OSS VLM] qwen2-vl:7b responded successfully for user_002.
+...
+```
+
+### 7.6 Using a Remote GPU Server (vLLM / RunPod / Modal)
+
+If you don't have a local GPU, you can rent one and point the pipeline at it:
+
+```bash
+# Override the endpoint URL with your remote server
+export OLLAMA_BASE_URL=http://<your-remote-server-ip>:<port>/v1
+
+python3 code/evaluation/main.py
+```
+
+The pipeline reads `OLLAMA_BASE_URL` from the environment at runtime — no code change needed. Any server that exposes an OpenAI-compatible `/v1/chat/completions` endpoint works (Ollama, vLLM, LM Studio, LocalAI, etc.).
+
+### 7.7 What Happens Without a Local Server
+
+If Ollama is not running or the model hasn't been pulled, the pipeline **does not crash**. Each claim prints:
+
+```
+[OSS VLM] qwen2-vl:7b unreachable or failed for user_001: Connection refused
+[OSS VLM] Ensure Ollama is running: `ollama serve` and model is pulled: `ollama pull qwen2-vl:7b`
+[OSS VLM] Falling back to deterministic mock prediction.
+```
+
+Mock mode produces schema-compliant output so the evaluation harness always completes successfully, regardless of hardware.
+
