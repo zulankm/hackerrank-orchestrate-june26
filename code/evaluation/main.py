@@ -18,6 +18,11 @@ from src.config import (
     MODEL_HAIKU,
     MODEL_GEMINI_PRO,
     MODEL_GEMINI_FLASH,
+    MODEL_QWEN2_VL,
+    MODEL_LLAMA_VISION,
+    MODEL_INTERNVL,
+    OPENSOURCE_MODELS,
+    CLOSED_MODELS,
     MODELS_LIST,
     MODEL_PRICING
 )
@@ -396,15 +401,27 @@ def main():
         
         # Cost Analysis
         f.write("## 2. Operational Cost Projections\n\n")
-        f.write("Using the full test set (`claims.csv` containing 44 claims and 82 images), we estimate operational costs for each model based on token averages from the sample set:\n\n")
-        f.write("| Model | Est. Cost per Claim | Est. Cost for 44 claims | Key Features | Pricing Assumptions (Input / Output / Image per 1M) |\n")
+        f.write("Using the full test set (`claims.csv` containing 44 claims and 82 images), we estimate operational costs for each model based on token averages from the sample set.\n")
+        f.write("> **Open-source models**: API cost is **$0.00** — infrastructure/GPU cost is operator-side, not per-token.\n\n")
+        f.write("| Model | Type | Est. Cost per Claim | Est. Cost for 44 claims | Key Features |\n")
         f.write("|---|---|---|---|---|\n")
+        _model_labels = {
+            MODEL_SONNET:      ("Closed-source", "Flagship Anthropic vision model"),
+            MODEL_HAIKU:       ("Closed-source", "Lightweight, fast Anthropic model"),
+            MODEL_GEMINI_PRO:  ("Closed-source", "Google flagship reasoning model"),
+            MODEL_GEMINI_FLASH:("Closed-source", "Google high-speed cost-saving model"),
+            MODEL_QWEN2_VL:    ("Open-source",   "Alibaba Qwen2-VL 7B — best visual precision & OCR"),
+            MODEL_LLAMA_VISION:("Open-source",   "Meta Llama 3.2 Vision 11B — best multi-lingual reasoning"),
+            MODEL_INTERNVL:    ("Open-source",   "InternVL 2.5 8B — best multi-image context"),
+        }
         for m in MODELS_LIST:
             r = results[m]
+            mtype, mdesc = _model_labels.get(m, ("Unknown", m))
             cost_per_claim = r['estimated_cost_usd'] / 20
             cost_full = cost_per_claim * 44
-            p = MODEL_PRICING[m]
-            f.write(f"| `{m}` | ${cost_per_claim:.6f} | **${cost_full:.4f}** | {'Flagship vision model' if m == MODEL_SONNET else 'Lightweight fast Anthropic' if m == MODEL_HAIKU else 'Google reasoning model' if m == MODEL_GEMINI_PRO else 'Google high-speed cost-saving'} | Input: ${p['input']:.2f}, Output: ${p['output']:.2f}, Image: ${p['image']:.2f} |\n")
+            cost_str = f"**$0.00** *(self-hosted)*" if m in OPENSOURCE_MODELS else f"**${cost_full:.4f}**"
+            per_claim_str = "$0.000000" if m in OPENSOURCE_MODELS else f"${cost_per_claim:.6f}"
+            f.write(f"| `{m}` | {mtype} | {per_claim_str} | {cost_str} | {mdesc} |\n")
         f.write("\n")
         
         # Throttling, retry, caching strategy

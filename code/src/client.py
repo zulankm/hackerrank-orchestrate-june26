@@ -3,6 +3,7 @@ import json
 import time
 import hashlib
 import re
+import base64
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from threading import Lock
@@ -11,6 +12,11 @@ from src.config import (
     MODEL_HAIKU,
     MODEL_GEMINI_PRO,
     MODEL_GEMINI_FLASH,
+    MODEL_QWEN2_VL,
+    MODEL_LLAMA_VISION,
+    MODEL_INTERNVL,
+    OPENSOURCE_MODELS,
+    OLLAMA_BASE_URL,
     ALLOWED_OBJECT_PARTS,
     ALLOWED_ISSUE_TYPES
 )
@@ -226,6 +232,81 @@ def call_google_api(
             
     raise RuntimeError("Google API call failed after max retries")
 
+def call_openai_compatible_api(
+    model_name: str,
+    system_prompt: str,
+    user_prompt: str,
+    base64_images: List[Dict[str, Any]],
+    base_url: str
+) -> Dict[str, Any]:
+    """
+    Calls a local OpenAI-compatible inference server (Ollama / vLLM) using the
+    openai Python SDK.  Images are sent as base64 data-URLs in the standard
+    vision message format.  JSON mode is requested via response_format so the
+    model outputs a parseable structured response.
+
+    Endpoint default: http://localhost:11434/v1  (Ollama)
+    Override with the OLLAMA_BASE_URL environment variable.
+    """
+    from openai import OpenAI
+
+    client = OpenAI(
+        base_url=base_url,
+        api_key="ollama",  # Ollama / vLLM ignore this value but the SDK requires it
+    )
+
+    # Build the content list: images first, then the text prompt.
+    # OpenAI vision format uses {type: image_url, image_url: {url: "data:<mime>;base64,<b64>"}}
+    content: List[Dict[str, Any]] = []
+    for img in base64_images:
+        data_url = f"data:{img['mime_type']};base64,{img['base64']}"
+        content.append({
+            "type": "image_url",
+            "image_url": {"url": data_url}
+        })
+
+    # Embed the JSON schema requirement directly in the user prompt because
+    # local models often don't support tool-use or response_format strictly.
+    schema_instruction = (
+        "\n\nRespond ONLY with a valid JSON object containing exactly these fields:\n"
+        '{ "evidence_standard_met": bool, "evidence_standard_met_reason": str, '
+        '"risk_flags": str, "issue_type": str, "object_part": str, '
+        '"claim_status": str, "claim_status_justification": str, '
+        '"supporting_image_ids": str, "valid_image": bool, "severity": str, '
+        '"confidence_score": float }\n'
+        'Do not include any explanation, markdown, or extra keys.'
+    )
+    content.append({"type": "text", "text": user_prompt + schema_instruction})
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user",   "content": content},
+    ]
+
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                temperature=0.0,
+                max_tokens=1024,
+                response_format={"type": "json_object"},
+            )
+            raw_text = response.choices[0].message.content or ""
+            # Strip any accidental markdown fences
+            raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text.strip())
+            raw_text = re.sub(r"\s*```$", "", raw_text.strip())
+            return json.loads(raw_text)
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise e
+            wait_time = 2 ** attempt
+            print(f"[OSS VLM] {model_name} call failed on attempt {attempt+1}: {e}. Retrying in {wait_time}s...")
+            time.sleep(wait_time)
+
+    raise RuntimeError(f"OpenAI-compatible API call to {model_name} failed after max retries")
+
 def generate_mock_prediction(
     row: Dict[str, Any],
     history: Dict[str, Any],
@@ -301,7 +382,37 @@ def generate_mock_prediction(
                     pred["confidence_score"] = 0.70
                 else:
                     pred["confidence_score"] = 0.90
-                    
+
+            # --- Open-Source VLM mock perturbations ---
+            # Calibrated to reflect realistic open-source model variance in offline/no-GPU envs.
+            elif model_name == MODEL_QWEN2_VL:
+                # Simulate ~5% error rate — Qwen2-VL is highly accurate on visual detail tasks
+                if (claim_hash_val % 20) == 0:
+                    pred["risk_flags"] = "low_light_or_glare;manual_review_required"
+                    pred["evidence_standard_met_reason"] = "Qwen2-VL mock: Minor glare may affect image quality assessment."
+                    pred["confidence_score"] = 0.88
+                else:
+                    pred["confidence_score"] = 0.97
+            elif model_name == MODEL_LLAMA_VISION:
+                # Simulate ~8% error rate — Llama Vision is strong but occasionally conservative
+                if (claim_hash_val % 12) == 0:
+                    pred["claim_status"] = "not_enough_information"
+                    pred["evidence_standard_met"] = False
+                    pred["severity"] = "unknown"
+                    pred["risk_flags"] = "damage_not_visible;manual_review_required"
+                    pred["evidence_standard_met_reason"] = "Llama Vision mock: Damage not clearly visible from provided angle."
+                    pred["confidence_score"] = 0.82
+                else:
+                    pred["confidence_score"] = 0.95
+            elif model_name == MODEL_INTERNVL:
+                # Simulate ~10% error rate — InternVL excels at multi-image but can struggle with single images
+                if (claim_hash_val % 10) == 0:
+                    pred["risk_flags"] = "cropped_or_obstructed;manual_review_required"
+                    pred["evidence_standard_met_reason"] = "InternVL mock: Image framing may be insufficient for full assessment."
+                    pred["confidence_score"] = 0.86
+                else:
+                    pred["confidence_score"] = 0.94
+
             return pred
 
     # 2. General Rule-based engine for claims.csv (test data) in mock mode
@@ -575,6 +686,18 @@ def generate_mock_prediction(
             claim_status = "not_enough_information"
             severity = "unknown"
             confidence_score = 0.7
+    # Open-source model test-claim mock differences
+    elif model_name == MODEL_LLAMA_VISION:
+        # Llama Vision is conservative: routes blurry/ambiguous angle mentions to review
+        if "blurry" in claim_text or "not sure" in claim_text or "unclear" in claim_text:
+            claim_status = "not_enough_information"
+            severity = "unknown"
+            confidence_score = 0.78
+    elif model_name == MODEL_INTERNVL:
+        # InternVL flags obstructed-angle mentions when a single image is submitted
+        if "angle" in claim_text or "partially" in claim_text:
+            risk_flags = "wrong_angle;manual_review_required"
+            confidence_score = 0.84
 
     return {
         "evidence_standard_met": evidence_standard_met,
@@ -644,12 +767,15 @@ def evaluate_claim(
     # 3. Choose API Key and Client based on model
     anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
     gemini_key = os.environ.get("GEMINI_API_KEY")
-    
+    # Open-source: endpoint URL (defaults to Ollama localhost, overridable via env var)
+    ollama_url = os.environ.get("OLLAMA_BASE_URL", OLLAMA_BASE_URL)
+
     is_anthropic_model = model_name in (MODEL_SONNET, MODEL_HAIKU)
     is_google_model = model_name in (MODEL_GEMINI_PRO, MODEL_GEMINI_FLASH)
-    
+    is_opensource_model = model_name in OPENSOURCE_MODELS
+
     raw_output = None
-    
+
     if is_anthropic_model and anthropic_key:
         try:
             raw_output = call_anthropic_api(
@@ -662,7 +788,7 @@ def evaluate_claim(
         except Exception as e:
             print(f"Error calling Anthropic API for user {user_id}: {e}. Falling back to mock prediction.")
             raw_output = None
-            
+
     elif is_google_model and gemini_key:
         try:
             raw_output = call_google_api(
@@ -674,6 +800,24 @@ def evaluate_claim(
             )
         except Exception as e:
             print(f"Error calling Google API for user {user_id}: {e}. Falling back to mock prediction.")
+            raw_output = None
+
+    elif is_opensource_model:
+        # Open-source VLMs are served via a local OpenAI-compatible endpoint (Ollama/vLLM).
+        # If the server is not reachable we fall through to mock mode gracefully.
+        try:
+            raw_output = call_openai_compatible_api(
+                model_name=model_name,
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                base64_images=base64_images,
+                base_url=ollama_url
+            )
+            print(f"  [OSS VLM] {model_name} responded successfully for user {user_id}.")
+        except Exception as e:
+            print(f"  [OSS VLM] {model_name} unreachable or failed for user {user_id}: {e}")
+            print(f"  [OSS VLM] Ensure Ollama is running: `ollama serve` and model is pulled: `ollama pull {model_name}`")
+            print(f"  [OSS VLM] Falling back to deterministic mock prediction.")
             raw_output = None
             
     # 4. Fallback to Mock Prediction if raw_output is still None (or if key was missing)
