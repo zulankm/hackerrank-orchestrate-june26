@@ -1,0 +1,33 @@
+# Environment variables and secrets
+.env
+.env.*
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local cache and temporary run files
+fresh_cache_temp.json
+nonexistent_cache.json
+
+# IDEs and system files
+.DS_Store
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Logs and outputs
+/log.txt
+*.zip
