@@ -238,52 +238,65 @@ def diagnose_image_quality(full_path: Path) -> List[str]:
     Performs blur check and average brightness check on an image.
     Attempts to use OpenCV first, and falls back to pure Pillow (PIL)
     if OpenCV is not installed or fails.
+
+    Flat uniform surfaces (e.g. plain cardboard packaging) naturally produce
+    low Laplacian variance because they have minimal texture — this is NOT blur.
+    We detect this case by measuring per-pixel standard deviation: if the image
+    is highly uniform (stddev < 15), we skip the blur flag to avoid false positives.
+
     Returns: List of detected risk flags (e.g. 'blurry_image', 'low_light_or_glare').
     """
-    path_str = str(full_path).replace("\\", "/").lower()
-    if "sample/case_017" in path_str:
-        return []
-        
     flags = []
-    
+
     # 1. Try OpenCV
     try:
         import cv2
+        import numpy as np
         img = cv2.imread(str(full_path), cv2.IMREAD_GRAYSCALE)
         if img is not None:
-            # Blur check: Laplacian Variance
-            lap_var = cv2.Laplacian(img, cv2.CV_64F).var()
-            if lap_var < 70.0:
-                flags.append("blurry_image")
+            # Flat-surface guard: highly uniform images are not blurry — they are plain surfaces.
+            # Pixel stddev < 15 indicates a featureless/uniform surface (e.g. blank cardboard).
+            pixel_stddev = float(np.std(img))
+            is_flat_surface = pixel_stddev < 15.0
+
+            # Blur check: Laplacian Variance — only meaningful on textured surfaces
+            if not is_flat_surface:
+                lap_var = cv2.Laplacian(img, cv2.CV_64F).var()
+                if lap_var < 70.0:
+                    flags.append("blurry_image")
+
             # Brightness check: Grayscale mean
             mean_brightness = img.mean()
             if mean_brightness < 35.0:
                 flags.append("low_light_or_glare")
             return flags
-    except Exception as cv_err:
+    except Exception:
         pass
-        
+
     # 2. Fallback to pure Pillow (PIL)
     try:
         from PIL import Image, ImageFilter, ImageStat
         with Image.open(full_path) as img:
             gray = img.convert("L")
-            # Brightness check: calculate grayscale mean
             stat = ImageStat.Stat(gray)
             mean_brightness = stat.mean[0]
+            pixel_stddev = stat.stddev[0]
+            is_flat_surface = pixel_stddev < 15.0
+
+            # Brightness check
             if mean_brightness < 35.0:
                 flags.append("low_light_or_glare")
-                
-            # Blur check: apply FIND_EDGES filter and calculate standard dev of edges
-            # Blurry images have low edge intensity variance.
-            edges = gray.filter(ImageFilter.FIND_EDGES)
-            edges_stat = ImageStat.Stat(edges)
-            edge_stddev = edges_stat.stddev[0]
-            # Empirical threshold: standard deviation < 12 indicates blur
-            if edge_stddev < 12.0:
-                flags.append("blurry_image")
+
+            # Blur check: only on textured (non-flat) surfaces
+            if not is_flat_surface:
+                edges = gray.filter(ImageFilter.FIND_EDGES)
+                edges_stat = ImageStat.Stat(edges)
+                edge_stddev = edges_stat.stddev[0]
+                if edge_stddev < 12.0:
+                    flags.append("blurry_image")
     except Exception as pil_err:
         print(f"Warning: Both OpenCV and Pillow diagnostics failed on {full_path}: {pil_err}")
-        
+
     return flags
+
 
